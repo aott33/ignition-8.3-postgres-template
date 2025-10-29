@@ -42,6 +42,7 @@ A Docker Compose template for quickly setting up an Ignition 8.3 gateway with Po
 | gateway | Ignition 8.3 Gateway | https://ignition83.localtest.me |
 | database | PostgreSQL 16 | localhost:5432 |
 | pgadmin | Database administration | https://postgres-pgadmin.localtest.me |
+| proxy | Traefik reverse proxy | https://proxy.localtest.me |
 | liquibase | Database migrations | Runs once on startup |
 
 ## Database Setup
