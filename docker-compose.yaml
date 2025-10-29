@@ -6,7 +6,6 @@ services:
       - ./services/ignition/config:/usr/local/bin/ignition/data/config 
       - ./services/ignition/projects:/usr/local/bin/ignition/data/projects
       - ./shared/gateway-utilities/projects/gateway-utilities:/usr/local/bin/ignition/data/projects/gateway-utilities
-
       # Temporary volume to skip commissioning
       - ./services/ignition/commissioning.json:/usr/local/bin/ignition/data/commissioning.json
     environment:
@@ -24,10 +23,11 @@ services:
       -n ignition83
       --
       -Dignition.config.mode=local-dev
-
     labels:
       traefik.enable: "true"
-      traefik.hostname: "ignition83"
+      traefik.http.routers.ignition.rule: "Host(`ignition83.localtest.me`)"
+      traefik.http.routers.ignition.entrypoints: "websecure"
+      traefik.http.services.ignition.loadbalancer.server.port: "8088"
     networks:
       - default
       - proxy
@@ -47,6 +47,7 @@ services:
       - database
     volumes:
       - ./services/postgres:/database
+      - ./services/postgres/postgresql.jar:/liquibase/lib/postgresql.jar
       - ./scripts/wait-for-it.sh:/wait-for-it.sh
     entrypoint: ["/wait-for-it.sh", "postgres:5432", "--", "liquibase", "--defaultsFile=/database/liquibase/liquibase.docker.properties", "update"]
   
@@ -60,9 +61,38 @@ services:
       - ./services/pgadmin/servers.json:/pgadmin4/servers.json
     labels:
       traefik.enable: "true"
-      traefik.hostname: "postgres-pgadmin"
+      traefik.http.routers.pgadmin.rule: "Host(`postgres-pgadmin.localtest.me`)"
+      traefik.http.routers.pgadmin.entrypoints: "websecure"
+      traefik.http.services.pgadmin.loadbalancer.server.port: "80"
     networks:
       - default
+      - proxy
+
+  proxy:
+    image: traefik:latest
+    container_name: traefik
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8090:8080"  # Traefik dashboard (direct access)
+    environment:
+      - TRAEFIK_ENTRYPOINTS_WEB_ADDRESS=:80
+      - TRAEFIK_ENTRYPOINTS_WEBSECURE_ADDRESS=:443
+      - TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_TLS=true
+      - TRAEFIK_API_DASHBOARD=true
+      - TRAEFIK_API_INSECURE=true
+      - TRAEFIK_PROVIDERS_DOCKER=true
+      - TRAEFIK_PROVIDERS_DOCKER_EXPOSEDBYDEFAULT=false
+      - TRAEFIK_PROVIDERS_DOCKER_NETWORK=proxy
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.proxy.rule: "Host(`proxy.localtest.me`)"
+      traefik.http.routers.proxy.entrypoints: "websecure"
+      traefik.http.routers.proxy.service: "api@internal"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
       - proxy
 
 networks:
